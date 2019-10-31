@@ -1,0 +1,9 @@
+*
+
+!.gitignore
+!*.jpg
+!*.jpeg
+!*.gif
+!*.png
+!*.svg
+!*.webp

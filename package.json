@@ -1,0 +1,31 @@
+{
+  "name": "assignment-3--senior-capstone--mwd-410--fall-2019",
+  "version": "1.0.0",
+  "description": "Assignment 3 for MWD 410, Senior Capstone, fall 2019.",
+  "main": "gulpfile.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/code-warrior/assignment-3--senior-capstone--mwd-410--fall-2019"
+  },
+  "author": "The Student",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/code-warrior/assignment-3--senior-capstone--mwd-410--fall-2019/issues"
+  },
+  "homepage": "https://roy.vanegas.org/teaching/at-uhart/senior-capstone/",
+  "devDependencies": {
+    "@babel/core": "^7.2.2",
+    "@babel/preset-env": "^7.3.1",
+    "babel-core": "^6.26.3",
+    "babel-preset-env": "^1.7.0",
+    "del": "^3.0.0",
+    "gulp": "^4.0.0",
+    "gulp-babel": "^8.0.0",
+    "gulp-eslint": "^5.0.0",
+    "gulp-sass": "^4.0.2",
+    "gulp-sass-lint": "^1.4.0"
+  }
+}
