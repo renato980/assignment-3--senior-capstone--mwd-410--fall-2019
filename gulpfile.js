@@ -1,64 +1,23 @@
-const { src, dest } = require(`gulp`);
-const babel = require(`gulp-babel`);
-const sass = require(`gulp-sass`);
-const sassLint = require(`gulp-sass-lint`);
-const jsLinter = require(`gulp-eslint`);
+const { src, dest, watch, series } = require(`gulp`);
 const del = require(`del`);
+const sass = require(`gulp-sass`);
+const HTMLPreprocessor = require(`gulp-nunjucks-render`);
+const data = require(`gulp-data`);
+const fs = require(`fs`);
+const cache = require('gulp-cache');
+const htmlCompressor = require(`gulp-htmlmin`);
+const htmlValidator = require(`gulp-html`);
+const imageCompressor = require(`gulp-imagemin`);
+const browserSync = require(`browser-sync`);
+const reload = browserSync.reload;
+const TEMP_FOLDER = `.tmp/`;
+const HTML_FOLDER = `app/views/html`;
+let browserChoice = `default`;
 
-// Note: All the linter-related config files mentioned in the comments below are
-// empty. Part of this assignment is to populate them with your own config files from
-// the previous assignment.
-
-/**
- * Fetch all JS files and transpile into ES6, depending on the configurations
- * included in .babelrc, which is in the root of this project.
- *
- * @returns {*}
- */
-let transpileJSForDev = () => {
-    return src(`app/views/scripts/*.js`)
-        .pipe(babel())
-        .pipe(dest(`temp/scripts`));
-};
-
-/**
- * Before transpiling Sass → CSS, lint the former using the config options defined
- * in the file .sass-lint.yml, which is in the root of this project.
- *
- * @returns {*}
- */
-let compileCSSForDev = () => {
-    return src(`app/views/sass/main.scss`)
-        .pipe(sassLint({configFile: './.sass-lint.yml'}))
-        .pipe(sassLint.format())
-        .pipe(sassLint.failOnError())
-        .pipe(sass())
-        .pipe(dest(`temp/styles`));
-};
-
-/**
- * Transpile ES5 → ES6, based on the configurations in ./eslintrc.json, which is in
- * the root of this project.
- *
- * @returns {*}
- */
-let lintJS = () => {
-    return src(`app/views/scripts/*.js`)
-        .pipe(jsLinter(`./.eslintrc.json`))
-        .pipe(jsLinter.formatEach(`compact`, process.stderr));
-};
-
-/**
- * Use pure Node to delete the “temp” folder. Add folder paths to the
- * “foldersToDelete” array below in order to delete more folders when running the
- * “clean” task.
- *
- * @returns {Promise<void>}
- */
 async function clean () {
     let fs = require(`fs`),
         i,
-        foldersToDelete = [`temp`];
+        foldersToDelete = [`.tmp/`];
 
     for (i = 0; i < foldersToDelete.length; i++) {
         try {
@@ -75,7 +34,129 @@ async function clean () {
     process.stdout.write(`\n`);
 }
 
-exports.lintJS = lintJS;
-exports.transpileJSForDev = transpileJSForDev;
-exports.compileCSSForDev = compileCSSForDev;
+async function safari () {
+    browserChoice = `safari`;
+}
+
+async function firefox () {
+    browserChoice = `firefox`;
+}
+
+async function chrome () {
+    browserChoice = `google chrome`;
+}
+
+async function opera () {
+    browserChoice = `opera`;
+}
+
+async function edge () {
+    browserChoice = `microsoft-edge`;
+}
+
+async function allBrowsers () {
+    browserChoice = [
+        `safari`,
+        `firefox`,
+        `google chrome`,
+        `opera`,
+        `microsoft-edge`
+    ];
+}
+
+let compileHTML = () => {
+    HTMLPreprocessor.nunjucks.configure({watch: false});
+
+    return src(`app/views/html/*.html`)
+		.pipe(data(function () {
+				return JSON.parse(fs.readFileSync(`./app/models/links-file.json`));
+		}))
+		.pipe(HTMLPreprocessor())
+		.pipe(dest('.tmp/'));
+};
+
+let dev = () => {
+    return src(`app/views/html/*.html`)
+		.pipe(htmlValidator());
+};
+
+let imagesDev = () => {
+    return src(`app/views/img/**/*`)
+		.pipe(dest('.tmp/img'));
+};
+
+let build = () => {
+    return src(`.tmp/*.html`)
+        .pipe(htmlCompressor({collapseWhitespace: true}))
+        .pipe(dest(`prod/`));
+};
+
+let cssDev = () => {
+    return src(`app/views/styles/**/*.scss`)
+        .pipe(sass({
+            outputStyle: `expanded`,
+            precision: 10
+        }).on(`error`, sass.logError))
+        .pipe(dest(`.tmp/styles`));
+};
+
+let cssProd = () => {
+    return src(`app/views/styles/**/*.scss`)
+        .pipe(sass({
+            outputStyle: `compressed`,
+            precision: 10
+        }).on(`error`, sass.logError))
+        .pipe(dest(`prod/styles`));
+};
+
+let compressImages = () => {
+    return src(`app/views/img/**/*`)
+        .pipe(cache(
+            imageCompressor({
+                optimizationLevel: 3, // For PNG files. Accepts 0 – 7; 3 is default.
+                progressive: true,    // For JPG files.
+                multipass: false,     // For SVG files. Set to true for compression.
+                interlaced: false     // For GIF files. Set to true for compression.
+            })
+        ))
+        .pipe(dest(`prod/img`));
+};
+
+let serve = () => {
+    browserSync({
+        server: {
+            baseDir: [
+                TEMP_FOLDER,
+                HTML_FOLDER
+            ]
+        }
+    });
+
+    watch([
+        `app/views/html/*.html`,
+        `app/views/styles/**/**`,
+        `app/controllers/*.*`,
+        `app/controllers/**/**`,
+        `app/models/*.json`
+    ],
+    compileHTMLDev).on(`change`, reload);
+};
+
+exports.safari = series(safari, serve);
+exports.firefox = series(firefox, serve);
+exports.chrome = series(chrome, serve);
+exports.opera = series(opera, serve);
+exports.edge = series(edge, serve);
+exports.safari = series(safari, serve);
+exports.allBrowsers = series(allBrowsers, serve);
+exports.compressImages = compressImages;
+exports.imagesDev = imagesDev;
+exports.cssDev = cssDev;
+exports.cssProd = cssProd;
+exports.dev = dev;
+exports.build = build;
+exports.developmentTrack = series(compileHTML, cssDev, imagesDev)
+exports.productionTrack = series(build, cssProd, compressImages)
+exports.compileHTML = compileHTML;
+exports.serve = series(compileHTML, cssDev, serve);
 exports.clean = clean;
